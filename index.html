@@ -1,5 +1,3 @@
-
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,10 +5,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&family=Inter:wght@400;600;700&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
         body { 
-            font-family: 'Inter', sans-serif; 
+            font-family: 'Inter', 'Noto Sans Tamil', sans-serif; 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); 
             min-height: 100vh; margin: 0; padding: 20px; 
             animation: gradientShift 15s ease infinite;
@@ -1360,6 +1360,10 @@
     function closeReportsModal() { document.getElementById('reportsModal').style.display = 'none'; }
 
     function downloadMonthlyReport() {
+        if (currentLanguage === 'ta') {
+            downloadMonthlyReport_Tamil();
+            return;
+        }
         const isTa = currentLanguage === 'ta';
         const entries = JSON.parse(localStorage.getItem(STORAGE_KEY_DATA)) || [];
         const activityLog = JSON.parse(localStorage.getItem(STORAGE_KEY_LOG)) || [];
@@ -1548,8 +1552,295 @@
         doc.save(`Saravanan_DUCD_Team_Monthly_${loggedInUser.id}_${now.toISOString().split('T')[0]}.pdf`);
     }
 
+    function downloadMonthlyReport_Tamil() {
+        const entries = JSON.parse(localStorage.getItem(STORAGE_KEY_DATA)) || [];
+        const now = new Date();
+        const months_ta = ['ஜனவரி','பிப்ரவரி','மார்ச்','ஏப்ரல்','மே','ஜூன்','ஜூலை','ஆகஸ்ட்','செப்டம்பர்','அக்டோபர்','நவம்பர்','டிசம்பர்'];
+        const { start: bizStart } = getBusinessMonthRange(now);
+        const bizLabel = months_ta[bizStart.getMonth()] + ' ' + bizStart.getFullYear() + ' சுழற்சி (2-1)';
+        const totalPV = entries.reduce((s,e)=>s+e.totalPV,0);
+        const total = entries.length;
+        const pct = (n) => total>0?Math.round((n/total)*100):0;
+        const active = entries.filter(e=>e.selfPV>=30).length;
+        const consist = entries.filter(e=>e.consistency==='Yes').length;
+        const goodGPV = entries.filter(e=>getGroupPVStatus(e.groupPV,e.level).met).length;
+        const meetYes = entries.filter(e=>e.meeting==='Yes').length;
+        const joinYes = entries.filter(e=>e.newJoiners==='Yes').length;
+        const overall = Math.round((pct(active)*0.2+pct(entries.filter(e=>e.selfPV>=100).length)*0.2+pct(consist)*0.2+pct(meetYes)*0.15+pct(joinYes)*0.15+pct(goodGPV)*0.1));
+        const gradeColor = (p) => p>=75?'#059669':p>=50?'#b45309':'#dc2626';
+        const gradeText = (p) => p>=75?'நல்லது':p>=50?'சராசரி':'கவனிக்கவும்';
+        const barHtml = (p,c) => `<div style="background:#e2e8f0;border-radius:4px;height:8px;"><div style="width:${p}%;height:100%;background:${c};border-radius:4px;"></div></div>`;
+
+        const params = [
+            {label:'புதிய சேர்க்கை',pct:pct(joinYes),count:joinYes,bad:total-joinYes},
+            {label:'100PV தொடர்ச்சி',pct:pct(consist),count:consist,bad:total-consist},
+            {label:'கூட்டம் வருகை',pct:pct(meetYes),count:meetYes,bad:total-meetYes},
+            {label:'செயலில் உள்ள IDs (PV>=30)',pct:pct(active),count:active,bad:total-active},
+            {label:'குழு PV இலக்கு (நிலை வாரியாக)',pct:pct(goodGPV),count:goodGPV,bad:total-goodGPV},
+        ];
+        const topMembers = [...entries].sort((a,b)=>b.totalPV-a.totalPV).slice(0,5);
+        const needsHelp = entries.filter(e=>e.selfPV<100||e.consistency==='No'||e.meeting==='No'||!e.newJoiners||e.newJoiners==='No').slice(0,8);
+
+        const rowsHtml = entries.map(e=>{
+            const gvs=getGroupPVStatus(e.groupPV,e.level);
+            const pvC=e.selfPV>=100?'#059669':e.selfPV>=30?'#b45309':'#dc2626';
+            return `<tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:5px 6px;font-size:10px;font-weight:700;">${e.name}</td>
+                <td style="padding:5px 6px;font-size:9px;color:#64748b;">${e.distId}</td>
+                <td style="padding:5px 6px;font-size:9px;">${e.level.replace('Director','Dir.')}</td>
+                <td style="padding:5px 6px;font-size:10px;color:${pvC};font-weight:700;">${e.selfPV}</td>
+                <td style="padding:5px 6px;font-size:10px;color:${gvs.met?'#059669':'#b45309'};">${e.groupPV}/${gvs.target}</td>
+                <td style="padding:5px 6px;font-size:10px;background:${e.consistency==='Yes'?'#dcfce7':'#fee2e2'};text-align:center;">${e.consistency==='Yes'?'✓':'✗'}</td>
+                <td style="padding:5px 6px;font-size:10px;background:${e.meeting==='Yes'?'#dbeafe':'#fef3c7'};text-align:center;">${e.meeting==='Yes'?'✓':'✗'}</td>
+                <td style="padding:5px 6px;font-size:10px;background:${(e.newJoiners||'No')==='Yes'?'#dcfce7':'#f3e8ff'};text-align:center;">${(e.newJoiners||'No')==='Yes'?'✓':'✗'}</td>
+                <td style="padding:5px 6px;font-size:9px;">${e.date}</td>
+            </tr>`;
+        }).join('');
+
+        const html = `<!DOCTYPE html><html><head>
+        <meta charset="UTF-8">
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;700&display=swap" rel="stylesheet">
+        <style>*{font-family:'Noto Sans Tamil',sans-serif!important;} body{margin:0;padding:20px;background:#fff;color:#1e293b;font-size:12px;}</style>
+        </head><body>
+        <div style="background:#1e293b;color:#fcf6ba;padding:18px 20px;border-radius:10px;margin-bottom:14px;text-align:center;">
+            <div style="font-size:17px;font-weight:700;margin-bottom:4px;">சரவணன் VMCM DUCD குழு மாதாந்திர அறிக்கை</div>
+            <div style="font-size:11px;color:#94a3b8;">வணிக மாதம்: ${bizLabel} &nbsp;|&nbsp; உறுப்பினர்: ${loggedInUser.name} (${loggedInUser.id})</div>
+            <div style="font-size:11px;color:#cbd5e1;margin-top:4px;">மொத்த உறுப்பினர்கள்: ${total} &nbsp;|&nbsp; குழு PV: ${totalPV.toFixed(1)}</div>
+        </div>
+        <div style="background:${gradeColor(overall)};color:white;padding:12px;border-radius:8px;text-align:center;margin-bottom:14px;font-size:14px;font-weight:700;">
+            மொத்த குழு மதிப்பு: ${overall}% — ${overall>=75?'சிறப்பான நிலை':overall>=50?'சராசரி':'மேம்படுத்தல் தேவை'}
+        </div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;padding-bottom:4px;border-bottom:2px solid #e2e8f0;">📊 செயல்திறன் பகுப்பாய்வு</div>
+        ${params.map(p=>`<div style="background:#f8fafc;border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+            <div style="flex:1;"><div style="font-weight:700;font-size:12px;margin-bottom:4px;">${p.label}</div>${barHtml(p.pct,gradeColor(p.pct))}</div>
+            <div style="text-align:right;min-width:90px;">
+                <span style="font-size:16px;font-weight:700;color:${gradeColor(p.pct)};">${p.pct}%</span><br>
+                <span style="font-size:10px;color:#64748b;">${p.count}/${total}</span><br>
+                <span style="font-size:10px;font-weight:700;color:${gradeColor(p.pct)};">${gradeText(p.pct)}</span>
+            </div>
+        </div>`).join('')}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0;">
+            <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;">
+                <div style="font-weight:700;color:#166534;margin-bottom:8px;font-size:12px;">🏆 சிறந்த உறுப்பினர்கள்</div>
+                ${topMembers.map((m,i)=>`<div style="padding:4px 0;border-bottom:1px solid #dcfce7;font-size:11px;">${['🥇','🥈','🥉','4.','5.'][i]} <strong>${m.name}</strong> — ${m.totalPV} PV</div>`).join('')}
+            </div>
+            <div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;padding:12px;">
+                <div style="font-weight:700;color:#991b1b;margin-bottom:8px;font-size:12px;">🚨 கவனம் தேவை</div>
+                ${needsHelp.map(m=>{
+                    const iss=[];
+                    if(m.selfPV<30)iss.push('செயலற்றது');else if(m.selfPV<100)iss.push('குறைந்த PV');
+                    if(m.consistency==='No')iss.push('100PV இல்லை');
+                    if(m.meeting==='No')iss.push('கூட்டம் இல்லை');
+                    if(!m.newJoiners||m.newJoiners==='No')iss.push('சேர்க்கை இல்லை');
+                    return `<div style="padding:4px 0;border-bottom:1px solid #fee2e2;font-size:10px;"><strong>${m.name}</strong><br><span style="color:#dc2626;">${iss.join(' · ')}</span></div>`;
+                }).join('')}
+            </div>
+        </div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #e2e8f0;">👥 உறுப்பினர் விவரங்கள் (முழு அட்டவணை)</div>
+        <table style="width:100%;border-collapse:collapse;font-size:10px;">
+            <thead><tr style="background:#1e293b;color:#fcf6ba;">
+                <th style="padding:6px;text-align:left;">பெயர்</th><th style="padding:6px;">ID</th>
+                <th style="padding:6px;">நிலை</th><th style="padding:6px;">சொந்த PV</th>
+                <th style="padding:6px;">குழு PV/இலக்கு</th><th style="padding:6px;">100PV</th>
+                <th style="padding:6px;">கூட்டம்</th><th style="padding:6px;">சேர்க்கை</th><th style="padding:6px;">தேதி</th>
+            </tr></thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+        <div style="margin-top:12px;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;">
+            குழு PV இலக்கு: Bronze Dir=2600 | Silver Dir=2100 | Gold Dir=1800 | மற்றவர்கள்=2600 &nbsp;|&nbsp; வணிக மாதம்: 2-ம் தேதி முதல் 1-ம் தேதி வரை
+        </div>
+        </body></html>`;
+
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:absolute;top:0;left:0;width:794px;opacity:0;pointer-events:none;z-index:-1;overflow:hidden;';
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        wrapper.appendChild(container);
+        document.body.appendChild(wrapper);
+        document.fonts.ready.then(() => {
+            setTimeout(() => {
+                html2canvas(container, {
+                    scale: 1.5, useCORS: true, allowTaint: true,
+                    width: 794, backgroundColor: '#ffffff',
+                    scrollX: 0, scrollY: 0, x: 0, y: 0, windowWidth: 794
+                }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
+                    const pdfW = pdf.internal.pageSize.getWidth();
+                    const pdfH = pdf.internal.pageSize.getHeight();
+                    const ratio = pdfW / canvas.width;
+                    const scaledH = canvas.height * ratio;
+                    let yOff = 0, page = 0;
+                    while (yOff < scaledH) {
+                        if (page > 0) pdf.addPage();
+                        pdf.addImage(imgData, 'JPEG', 0, -yOff, pdfW, scaledH);
+                        yOff += pdfH; page++;
+                    }
+                    pdf.save(`Saravanan_VMCM_DUCD_Tamil_Monthly_${loggedInUser.id}_${now.toISOString().split('T')[0]}.pdf`);
+                    document.body.removeChild(wrapper);
+                }).catch(err => { console.error('html2canvas error:', err); document.body.removeChild(wrapper); alert('PDF உருவாக்கத்தில் பிழை.'); });
+            }, 1800);
+        });
+    }
+
     function downloadPDF() {
         const isTa = currentLanguage === 'ta';
+        if (isTa) {
+            downloadPDF_Tamil();
+        } else {
+            downloadPDF_English();
+        }
+    }
+
+    /* ── TAMIL PDF: html2canvas renders actual Tamil glyphs ── */
+    function downloadPDF_Tamil() {
+        const entries = JSON.parse(localStorage.getItem(STORAGE_KEY_DATA)) || [];
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        const total = entries.length;
+
+        const pct = (n) => total > 0 ? Math.round((n/total)*100) : 0;
+        const active      = entries.filter(e => e.selfPV >= 30).length;
+        const consist     = entries.filter(e => e.consistency === 'Yes').length;
+        const goodGroupPV = entries.filter(e => getGroupPVStatus(e.groupPV, e.level).met).length;
+        const todayEdited = entries.filter(e => (e.lastModified||e.timestamp||e.date||'').substring(0,10) === todayStr);
+        const meetingToday = todayEdited.filter(e => e.meeting === 'Yes').length;
+        const recruitToday = todayEdited.filter(e => e.newJoiners === 'Yes').length;
+        const countFactor  = total >= 10 ? 1 : total / 10;
+        const ac = Math.round(pct(active)*countFactor);
+        const cn = Math.round(pct(consist)*countFactor);
+        const gv = Math.round(pct(goodGroupPV)*countFactor);
+        const mt = Math.round((total>0?Math.round(meetingToday/total*100):0)*countFactor);
+        const rc = Math.round((total>0?Math.round(recruitToday/total*100):0)*countFactor);
+        const overall = Math.round(ac*0.25+cn*0.25+gv*0.15+mt*0.2+rc*0.15);
+        const greenMembers = entries.filter(e => e.selfPV >= 100).length;
+        const excellenceThreshold = 26;
+        const overallLabel = (overall>=75&&greenMembers>=excellenceThreshold)?'சிறப்பான நிலை':overall>=75?'நல்லது (26+ பச்சை உறுப்பினர்கள் தேவை)':overall>=50?'சராசரி':'மேம்படுத்தல் தேவை';
+        const gradeText = (p) => p>=75?'நல்லது':p>=50?'சராசரி':'கவனிக்கவும்';
+        const gradeColor = (p) => p>=75?'#059669':p>=50?'#b45309':'#dc2626';
+        const totalPV = entries.reduce((s,e)=>s+e.totalPV,0);
+
+        const params = [
+            { label:'செயலில் உள்ள IDs (PV>=30)',  adj:ac, count:active },
+            { label:'100PV தொடர்ச்சி (CNC)',        adj:cn, count:consist },
+            { label:'குழு PV இலக்கு (நிலை வாரியாக)', adj:gv, count:goodGroupPV },
+            { label:'கூட்டம் (தினசரி திருத்தப்பட்டது)', adj:mt, count:meetingToday },
+            { label:'புதிய சேர்க்கை (தினசரி)',       adj:rc, count:recruitToday },
+        ];
+
+        const barHtml = (pct, color) => `<div style="background:#e2e8f0;border-radius:4px;height:8px;width:100%;"><div style="width:${pct}%;height:100%;background:${color};border-radius:4px;"></div></div>`;
+
+        const rowsHtml = entries.map(e => {
+            const gvs = getGroupPVStatus(e.groupPV, e.level);
+            const pvColor = e.selfPV>=100?'#059669':e.selfPV>=30?'#b45309':'#dc2626';
+            return `<tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:5px 6px;font-size:11px;font-weight:700;">${e.name}</td>
+                <td style="padding:5px 6px;font-size:10px;color:#64748b;">${e.distId}</td>
+                <td style="padding:5px 6px;font-size:11px;color:${pvColor};font-weight:700;">${e.selfPV}</td>
+                <td style="padding:5px 6px;font-size:10px;background:${e.consistency==='Yes'?'#dcfce7':'#fee2e2'};text-align:center;">${e.consistency==='Yes'?'✓ ஆம்':'✗ இல்லை'}</td>
+                <td style="padding:5px 6px;font-size:10px;background:${e.meeting==='Yes'?'#dbeafe':'#fef3c7'};text-align:center;">${e.meeting==='Yes'?'✓ ஆம்':'✗ இல்லை'}</td>
+                <td style="padding:5px 6px;font-size:10px;background:${(e.newJoiners||'No')==='Yes'?'#dcfce7':'#f3e8ff'};text-align:center;">${(e.newJoiners||'No')==='Yes'?'✓ ஆம்':'✗ இல்லை'}</td>
+                <td style="padding:5px 6px;font-size:10px;color:${gvs.met?'#059669':'#b45309'};">${e.groupPV} / ${gvs.target}</td>
+                <td style="padding:5px 6px;font-size:10px;">${e.date}</td>
+            </tr>`;
+        }).join('');
+
+        const html = `<!DOCTYPE html><html><head>
+        <meta charset="UTF-8">
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;700&display=swap" rel="stylesheet">
+        <style>
+            body { font-family:'Noto Sans Tamil',sans-serif; margin:0; padding:20px; background:#fff; color:#1e293b; font-size:12px; }
+            h1,h2,h3,p,td,th,span,div { font-family:'Noto Sans Tamil',sans-serif !important; }
+        </style></head><body>
+        <div style="background:#1e293b;color:#fcf6ba;padding:18px 20px;border-radius:10px;margin-bottom:16px;text-align:center;">
+            <div style="font-size:17px;font-weight:700;margin-bottom:4px;">சரவணன் VMCM DUCD குழு அனுதின அறிக்கை</div>
+            <div style="font-size:11px;color:#cbd5e1;">உறுப்பினர்: ${loggedInUser.name} (ID: ${loggedInUser.id}) &nbsp;|&nbsp; தேதி: ${now.toLocaleDateString('ta-IN')} &nbsp;|&nbsp; உறுப்பினர்கள்: ${total} &nbsp;|&nbsp; குழு PV: ${totalPV.toFixed(1)}</div>
+        </div>
+
+        <div style="background:${overall>=75?'#059669':overall>=50?'#b45309':'#dc2626'};color:white;padding:12px 16px;border-radius:8px;text-align:center;margin-bottom:14px;font-size:15px;font-weight:700;">
+            மொத்த குழு மதிப்பு: ${overall}% — ${overallLabel}
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px;padding-bottom:4px;border-bottom:2px solid #e2e8f0;">📊 செயல்திறன் சுருக்கம்</div>
+            ${params.map(p=>`<div style="background:#f8fafc;border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+                <div style="flex:1;">
+                    <div style="font-weight:700;font-size:12px;margin-bottom:4px;">${p.label}</div>
+                    ${barHtml(p.adj,gradeColor(p.adj))}
+                </div>
+                <div style="text-align:right;min-width:80px;">
+                    <span style="font-size:16px;font-weight:700;color:${gradeColor(p.adj)};">${p.adj}%</span><br>
+                    <span style="font-size:10px;color:#64748b;">${p.count}/${total} உறுப்பினர்கள்</span><br>
+                    <span style="font-size:10px;font-weight:700;color:${gradeColor(p.adj)};">${gradeText(p.adj)}</span>
+                </div>
+            </div>`).join('')}
+        </div>
+
+        <div style="background:${greenMembers>=excellenceThreshold?'#f0fdf4':'#fef9c3'};border:1.5px solid ${greenMembers>=excellenceThreshold?'#86efac':'#fde047'};border-radius:8px;padding:10px 14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:700;">பச்சை உறுப்பினர்கள் (Self PV >= 100)</span>
+            <span style="font-size:15px;font-weight:700;color:${greenMembers>=excellenceThreshold?'#059669':'#b45309'};">${greenMembers} / ${total}${greenMembers<excellenceThreshold?' ('+( excellenceThreshold-greenMembers)+' மேலும் தேவை)':' ✓'}</span>
+        </div>
+
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #e2e8f0;">👥 உறுப்பினர் விவரங்கள்</div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+            <thead>
+                <tr style="background:#1e293b;color:#fcf6ba;">
+                    <th style="padding:7px 6px;text-align:left;">பெயர்</th>
+                    <th style="padding:7px 6px;">ID</th>
+                    <th style="padding:7px 6px;">சொந்த PV</th>
+                    <th style="padding:7px 6px;">100PV</th>
+                    <th style="padding:7px 6px;">கூட்டம்</th>
+                    <th style="padding:7px 6px;">சேர்க்கை</th>
+                    <th style="padding:7px 6px;">குழு PV/இலக்கு</th>
+                    <th style="padding:7px 6px;">தேதி</th>
+                </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+
+        <div style="margin-top:14px;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px;">
+            * கூட்டம் % & சேர்க்கை % = இன்று திருத்தப்படவில்லை எனில் 0% &nbsp;|&nbsp; * EXCELLENT: மதிப்பு >= 75% மற்றும் >= ${excellenceThreshold} பச்சை உறுப்பினர்கள் தேவை<br>
+            * குழு PV இலக்கு: Bronze Dir=2600 | Silver Dir=2100 | Gold Dir=1800 | மற்றவர்கள்=2600 &nbsp;|&nbsp; வணிக மாதம்: 2-ம் தேதி முதல் 1-ம் தேதி வரை
+        </div>
+        </body></html>`;
+
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:absolute;top:0;left:0;width:794px;opacity:0;pointer-events:none;z-index:-1;overflow:hidden;';
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        wrapper.appendChild(container);
+        document.body.appendChild(wrapper);
+        document.fonts.ready.then(() => {
+            setTimeout(() => {
+                html2canvas(container, {
+                    scale: 1.5, useCORS: true, allowTaint: true,
+                    width: 794, backgroundColor: '#ffffff',
+                    scrollX: 0, scrollY: 0, x: 0, y: 0, windowWidth: 794
+                }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
+                    const pdfW = pdf.internal.pageSize.getWidth();
+                    const pdfH = pdf.internal.pageSize.getHeight();
+                    const ratio = pdfW / canvas.width;
+                    const scaledH = canvas.height * ratio;
+                    let yOff = 0, page = 0;
+                    while (yOff < scaledH) {
+                        if (page > 0) pdf.addPage();
+                        pdf.addImage(imgData, 'JPEG', 0, -yOff, pdfW, scaledH);
+                        yOff += pdfH; page++;
+                    }
+                    pdf.save(`Saravanan_VMCM_DUCD_Tamil_${loggedInUser.id}_${todayStr}.pdf`);
+                    document.body.removeChild(wrapper);
+                }).catch(err => { console.error('html2canvas error:', err); document.body.removeChild(wrapper); alert('PDF உருவாக்கத்தில் பிழை.'); });
+            }, 1500);
+        });
+    }
+
+    /* ── ENGLISH PDF: original jsPDF text approach ── */
+    function downloadPDF_English() {
+        const isTa = false;
         const entries = JSON.parse(localStorage.getItem(STORAGE_KEY_DATA)) || [];
         const now = new Date();
         const todayStr = now.toISOString().split('T')[0];
@@ -1585,43 +1876,42 @@
 
         const greenMembers = entries.filter(e => e.selfPV >= 100).length;
         const excellenceThreshold = 26;
-        const overallLabel = (overall >= 75 && greenMembers >= excellenceThreshold) ? (isTa ? 'SIRAPPANA NILAI' : 'EXCELLENT')
-                           : overall >= 75 ? (isTa ? 'NALLADU' : 'GOOD (Need 26+ Green Members for Excellent)')
-                           : overall >= 50 ? (isTa ? 'SARAASARI' : 'AVERAGE')
-                           : (isTa ? 'MEEMPADUPPU THEVAIPPADUGINDRADHU' : 'NEEDS IMPROVEMENT');
+        const overallLabel = (overall >= 75 && greenMembers >= excellenceThreshold) ? 'EXCELLENT'
+                           : overall >= 75 ? 'GOOD (Need 26+ Green Members for Excellent)'
+                           : overall >= 50 ? 'AVERAGE' : 'NEEDS IMPROVEMENT';
 
         const gradeColor = (p) => p >= 75 ? [5,150,105] : p >= 50 ? [180,100,0] : [185,28,28];
-        const gradeText  = (p) => p >= 75 ? (isTa?'NALLADU':'GOOD') : p >= 50 ? (isTa?'SARAASARI':'AVERAGE') : (isTa?'KAVANIKKAVUM':'NEEDS FOCUS');
+        const gradeText  = (p) => p >= 75 ? 'GOOD' : p >= 50 ? 'AVERAGE' : 'NEEDS FOCUS';
 
         doc.setFillColor(30, 41, 59);
         doc.rect(0, 0, 210, 42, 'F');
         doc.setFontSize(15); doc.setTextColor(252, 246, 186); doc.setFont(undefined, 'bold');
-        doc.text(isTa ? 'Saravanan DUCD Kuzhu Followup Arikkai' : 'Saravanan DUCD Team Followup Report', 105, 13, { align: 'center' });
+        doc.text('Saravanan VMCM DUCD Team Followup Report', 105, 13, { align: 'center' });
         doc.setFontSize(9); doc.setTextColor(200, 215, 235); doc.setFont(undefined, 'normal');
-        doc.text(`${isTa?'Aayvalar':'By'}: ${loggedInUser.name} (ID: ${loggedInUser.id})`, 105, 21, { align: 'center' });
+        doc.text(`By: ${loggedInUser.name} (ID: ${loggedInUser.id})`, 105, 21, { align: 'center' });
         const totalPV = entries.reduce((s,e)=>s+e.totalPV,0);
-        doc.text(`${isTa?'Uruppinargal':'Members'}: ${total}  |  ${isTa?'Kuzhu PV':'Team PV'}: ${totalPV.toFixed(1)}  |  ${isTa?'Naal':'Date'}: ${now.toLocaleDateString()}`, 105, 29, { align: 'center' });
+        doc.text(`Members: ${total}  |  Team PV: ${totalPV.toFixed(1)}  |  Date: ${now.toLocaleDateString()}`, 105, 29, { align: 'center' });
         doc.setFontSize(7); doc.setTextColor(255,220,80);
         doc.text(`Green Members (Self PV >= 100): ${greenMembers}/${total}${greenMembers < excellenceThreshold ? ` — Need ${excellenceThreshold-greenMembers} more for EXCELLENT rating` : ' ✓ EXCELLENT threshold met'}`, 105, 37, { align: 'center' });
 
         let y = 47;
         doc.setFontSize(11); doc.setTextColor(30, 41, 59); doc.setFont(undefined, 'bold');
-        doc.text(isTa ? '% AAYVUKKU KATTAMAI (SUNNIYAM ARIKKAI)' : '% PERFORMANCE SUMMARY (MINIMAL REPORT)', 14, y); y += 4;
+        doc.text('% PERFORMANCE SUMMARY (MINIMAL REPORT)', 14, y); y += 4;
         doc.setDrawColor(191, 149, 63); doc.setLineWidth(0.6); doc.line(14, y, 196, y); y += 5;
 
         const [gr,gg,gb] = gradeColor(overall);
         doc.setFillColor(gr,gg,gb);
         doc.roundedRect(14, y, 182, 14, 3, 3, 'F');
         doc.setFontSize(11); doc.setTextColor(255,255,255); doc.setFont(undefined, 'bold');
-        doc.text(`${isTa?'Olverum Kuzhu Nilai':'Overall Team Score'}: ${overall}%  —  ${overallLabel}`, 105, y+9, { align: 'center' });
+        doc.text(`Overall Team Score: ${overall}%  —  ${overallLabel}`, 105, y+9, { align: 'center' });
         y += 20;
 
         const params = [
-            { label: isTa?'Sadhaga Uruppinargal (PV>=30)':'Active IDs (Self PV >= 30)', raw: rawActive, adj: ac, count: active },
-            { label: isTa?'100PV Thodarchi (CNC)':'100PV Consistency (CNC)',            raw: rawConsist, adj: cn, count: consist },
-            { label: isTa?'Kuzhu PV Ilakku (Nilai-Vagaipaduttu)':'Group PV Target Met (Level-wise)', raw: rawGroupPV, adj: gv, count: goodGroupPV },
-            { label: isTa?'Kootam (Thinasari Thiruthappatta)':'Meeting (Daily Edited Yes)',         raw: rawMeeting, adj: mt, count: meetingToday },
-            { label: isTa?'Puthiya Searkkai (Thinasari)':'Recruitment / New Joiners (Daily Edit)', raw: rawRecruit, adj: rc, count: recruitToday },
+            { label:'Active IDs (Self PV >= 30)', raw: rawActive, adj: ac, count: active },
+            { label:'100PV Consistency (CNC)',     raw: rawConsist, adj: cn, count: consist },
+            { label:'Group PV Target Met (Level-wise)', raw: rawGroupPV, adj: gv, count: goodGroupPV },
+            { label:'Meeting (Daily Edited Yes)',  raw: rawMeeting, adj: mt, count: meetingToday },
+            { label:'Recruitment / New Joiners (Daily Edit)', raw: rawRecruit, adj: rc, count: recruitToday },
         ];
 
         params.forEach((p, i) => {
@@ -1677,34 +1967,23 @@
 
         if (y > 240) { doc.addPage(); y = 20; }
         doc.setFontSize(10); doc.setTextColor(30, 41, 59); doc.setFont(undefined, 'bold');
-        doc.text(isTa?'URUPPINAR VIVARANGAL':'MEMBER DATA', 14, y); y += 3;
+        doc.text('MEMBER DATA', 14, y); y += 3;
 
         const rows = entries.map(e => {
             const gvs = getGroupPVStatus(e.groupPV, e.level);
             return [
-                e.name, e.distId,
-                e.selfPV,
-                e.consistency === 'Yes' ? (isTa?'AAME':'YES') : (isTa?'ILLAI':'NO'),
-                e.meeting === 'Yes' ? (isTa?'AAME':'YES') : (isTa?'ILLAI':'NO'),
-                (e.newJoiners || 'No') === 'Yes' ? (isTa?'AAME':'YES') : (isTa?'ILLAI':'NO'),
+                e.name, e.distId, e.selfPV,
+                e.consistency === 'Yes' ? 'YES' : 'NO',
+                e.meeting === 'Yes' ? 'YES' : 'NO',
+                (e.newJoiners || 'No') === 'Yes' ? 'YES' : 'NO',
                 `${e.groupPV}/${gvs.target}`,
-                gvs.met ? '✓' : '✗',
+                gvs.met ? 'Y' : 'N',
                 e.date
             ];
         });
 
         doc.autoTable({
-            head: [[
-                isTa?'Peyar':'Name',
-                'ID',
-                isTa?'Sontha PV':'Self PV',
-                isTa?'100PV':'100PV',
-                isTa?'Kootam':'Meeting',
-                isTa?'Searkkai':'Joiner',
-                isTa?'Kuzhu PV/Ilakku':'Group PV/Target',
-                isTa?'Ilakku':'Target',
-                isTa?'Naal':'Date'
-            ]],
+            head: [['Name','ID','Self PV','100PV','Meeting','Joiner','Group PV/Target','Target','Date']],
             body: rows,
             startY: y + 3,
             styles: { fontSize: 7 },
@@ -1713,22 +1992,19 @@
             didParseCell: function(data) {
                 if (data.section === 'body' && data.column.index === 2) {
                     const v = parseFloat(rows[data.row.index][2]);
-                    if (v < 30)        data.cell.styles.fillColor = [254,202,202];
-                    else if (v < 100)  data.cell.styles.fillColor = [254,215,170];
-                    else               data.cell.styles.fillColor = [209,250,229];
+                    if (v < 30) data.cell.styles.fillColor = [254,202,202];
+                    else if (v < 100) data.cell.styles.fillColor = [254,215,170];
+                    else data.cell.styles.fillColor = [209,250,229];
                 }
                 if (data.section === 'body' && data.column.index === 3) {
-                    if (rows[data.row.index][3] === 'NO' || rows[data.row.index][3] === 'ILLAI')
-                        data.cell.styles.fillColor = [254,202,202];
+                    if (rows[data.row.index][3] === 'NO') data.cell.styles.fillColor = [254,202,202];
                 }
                 if (data.section === 'body' && data.column.index === 7) {
-                    const val = rows[data.row.index][7];
-                    if (val === '✗') data.cell.styles.fillColor = [254,202,202];
+                    if (rows[data.row.index][7] === 'N') data.cell.styles.fillColor = [254,202,202];
                     else data.cell.styles.fillColor = [209,250,229];
                 }
             }
         });
-
         doc.save(`Saravanan_DUCD_Team_Daily_${loggedInUser.id}_${todayStr}.pdf`);
     }
 
