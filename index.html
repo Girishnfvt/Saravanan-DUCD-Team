@@ -1,7 +1,9 @@
+
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saravanan DUCD Team Followup - Enhanced Pro</title>
+    <title>Saravanan VMCM DUCD Team - Daily Report</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&family=Inter:wght@400;600;700&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -108,11 +110,12 @@
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
             border: 1px solid rgba(191,149,63,0.2);
-            padding: 44px 38px; border-radius: 4px; text-align: center; 
+            padding: 40px 38px 36px; border-radius: 8px; text-align: center; 
             box-shadow: 0 40px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.05);
-            width: 360px;
+            width: 420px;
             animation: fadeInLogin 0.8s cubic-bezier(0.16, 1, 0.3, 1);
         }
+        /* login logo styles removed — vestige only */
         .login-box::before {
             content: '';
             position: absolute; top: 0; left: 20%; right: 20%; height: 1px;
@@ -242,8 +245,11 @@
 
         .header-section { text-align: center; margin-bottom: 30px; }
         .team-logo { 
-            max-width: 120px; height: auto; border-radius: 15px; margin-bottom: 20px; 
-            border: 3px solid #fbbf24; box-shadow: 0 8px 25px rgba(251, 191, 36, 0.4);
+            width: auto; max-width: 160px; height: auto; max-height: 120px;
+            border-radius: 14px; margin-bottom: 14px; 
+            object-fit: contain; background: transparent;
+            border: 3px solid #fbbf24; box-shadow: 0 6px 18px rgba(251, 191, 36, 0.35);
+            display: block; margin-left: auto; margin-right: auto;
         }
         .luxury-gold-title {
             font-family: 'Playfair Display', serif; font-size: 42px; font-weight: 900; 
@@ -301,7 +307,14 @@
         .leader-name-small { font-weight: 800; font-size: 16px; margin: 0; color: #1e293b; }
         .leader-rank-small { font-size: 9px; color: #be185d; font-weight: 800; text-transform: uppercase; }
         .team-tag { font-size: 10px; color: #1e293b; font-weight: 700; background: #fce7f3; padding: 3px 8px; border-radius: 6px; display: inline-block; margin-top: 3px; }
-        .inline-logo { width: 75px; height: auto; border-radius: 50%; }
+        .inline-logo { 
+            width: 75px; height: 75px; border-radius: 50%; 
+            object-fit: cover;
+            border: 3px solid transparent;
+            background: linear-gradient(#fce7f3,#fce7f3) padding-box,
+                        linear-gradient(135deg,#bf953f,#fcf6ba,#b38728,#fcf6ba,#bf953f) border-box;
+            box-shadow: 0 0 0 3px rgba(191,149,63,0.2), 0 4px 16px rgba(180,130,0,0.35);
+        }
 
         /* ===== BEST WORKERS BANNER ===== */
         .best-workers-banner {
@@ -388,6 +401,12 @@
         .award-close-btn { display: block; width: 100%; background: linear-gradient(135deg, #bf953f 0%, #fcf6ba 50%, #b38728 100%); color: #0f0c29; border: none; padding: 15px 30px; border-radius: 12px; font-weight: 900; font-size: 15px; cursor: pointer; letter-spacing: 1px; box-shadow: 0 8px 25px rgba(180,130,0,0.4); transition: all 0.3s ease; }
         .award-close-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 35px rgba(180,130,0,0.55); }
 
+
+        /* Vestige login ring spin */
+        @keyframes vestSpinRing {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
         /* ===== TRASH ===== */
         #trashSection { display: none; background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); padding: 20px; border-radius: 15px; margin: 25px 0; border: 3px dashed #f87171; }
     </style>
@@ -412,14 +431,32 @@
     <div class="login-hex" style="top:30%;right:8%;animation-duration:10s;animation-delay:2s;width:30px;height:30px;"></div>
 
     <div class="login-box">
-        <div class="login-brand-line">
-            <div class="login-brand-divider"></div>
-            <img src="https://i.postimg.cc/cCM81rRg/Saravanan_team_logo.png" style="width: 70px; border-radius: 10px; box-shadow: 0 6px 20px rgba(191,149,63,0.4); border: 1px solid rgba(191,149,63,0.3);">
-            <div class="login-brand-divider r"></div>
+        <!-- Vestige Logo only — centered, gold gradient border ring -->
+        <div style="display:flex; justify-content:center; margin-bottom:20px;">
+            <div style="position:relative; display:inline-flex; align-items:center; justify-content:center;">
+                <!-- outer spinning gold ring -->
+                <div style="position:absolute; inset:-5px; border-radius:50%;
+                     background: conic-gradient(from 0deg, #bf953f, #fcf6ba, #b38728, #fcf6ba, #bf953f, #fcf6ba, #bf953f);
+                     animation: vestSpinRing 4s linear infinite;"></div>
+                <!-- white gap ring -->
+                <div style="position:absolute; inset:-2px; border-radius:50%; background:#09090f;"></div>
+                <!-- logo -->
+                <img src="https://i.postimg.cc/HkpQdq37/vestige.png" alt="Vestige Logo"
+                    style="position:relative; width:110px; height:110px; border-radius:50%;
+                           object-fit:cover; display:block;
+                           box-shadow: 0 6px 24px rgba(0,0,0,0.6), 0 0 18px rgba(191,149,63,0.3);">
+            </div>
+        </div>
+        <!-- Daily Report badge below vestige logo -->
+        <div style="text-align:center; margin-bottom:16px;">
+            <span style="display:inline-block; background:linear-gradient(135deg,#bf953f 0%,#fcf6ba 50%,#b38728 100%);
+                color:#0a0a0f; font-size:9px; font-weight:900; letter-spacing:2.5px;
+                padding:4px 16px; border-radius:20px; text-transform:uppercase;
+                box-shadow:0 4px 14px rgba(191,149,63,0.5);">📊 Daily Report</span>
         </div>
 
-        <h2 style="margin: 12px 0 4px 0; font-family:'Cormorant Garamond',serif; font-size: 22px; font-weight: 700; background: linear-gradient(45deg,#bf953f,#fcf6ba,#b38728); -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:2px; text-transform:uppercase;">Saravanan Team</h2>
-        <p style="margin: 0 0 24px 0; font-size: 10px; color: rgba(255,255,255,0.3); letter-spacing: 4px; text-transform: uppercase; font-weight: 600;">SARAVANAN DUCD TEAM · SECURE ACCESS</p>
+        <h2 style="margin: 4px 0 3px 0; font-family:'Cormorant Garamond',serif; font-size: 20px; font-weight: 700; background: linear-gradient(45deg,#bf953f,#fcf6ba,#b38728,#fcf6ba,#bf953f); background-size:200% auto; -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:2px; text-transform:uppercase; animation: lightSweep 3s infinite linear;">Saravanan VMCM DUCD Team</h2>
+        <p style="margin: 5px 0 22px 0; font-size: 9px; color: rgba(255,255,255,0.3); letter-spacing: 3.5px; text-transform: uppercase; font-weight: 600;">VMCM DUCD · DAILY REPORT · SECURE ACCESS</p>
 
         <div style="display: flex; gap: 10px; margin-bottom: 12px;">
             <input type="number" id="loginId" placeholder="Distributor ID"
@@ -452,7 +489,7 @@
         <p id="loginError" style="margin:12px 0 0 0; font-size:12px; color:#f87171; display:none; font-weight:700;"></p>
 
         <div style="margin-top:20px; font-size:9px; color:rgba(255,255,255,0.15); letter-spacing:3px; text-transform:uppercase; font-weight:600;">
-            DUCD SARAVANAN TEAM · VESTIGE
+            SARAVANAN VMCM DUCD TEAM · VESTIGE
         </div>
     </div>
 </div>
